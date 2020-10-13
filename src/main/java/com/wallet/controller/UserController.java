@@ -4,6 +4,7 @@ import com.wallet.dto.UserDTO;
 import com.wallet.entity.User;
 import com.wallet.response.Response;
 import com.wallet.service.UserService;
+import com.wallet.util.Bcrypt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,24 +26,31 @@ public class UserController {
     @PostMapping
     public ResponseEntity<Response<UserDTO>> create(@Valid @RequestBody UserDTO dto, BindingResult result){
         Response<UserDTO> response =  new Response<UserDTO>();
-        User user = service.save(convertToUserDTOToUser(dto));
+
+        if(result.hasErrors()){
+            result.getAllErrors().forEach(e -> response.getErrors().add(e.getDefaultMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+
+        User user = service.save(convertDTOToEntity(dto));
         response.setData(convertEntityToDTO(user));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    private User convertToUserDTOToUser(UserDTO dto){
+    private User convertDTOToEntity(UserDTO dto){
         return User.builder()
+                .id(dto.getId())
                 .name(dto.getName())
                 .email(dto.getEmail())
-                .password(dto.getPassword())
+                .password(Bcrypt.getHash(dto.getPassword()))
                 .build();
     }
 
     private UserDTO convertEntityToDTO(User u){
         return UserDTO.builder()
+                .id(u.getId())
                 .name(u.getName())
                 .email(u.getEmail())
-                .password(u.getPassword())
                 .build();
     }
 }
